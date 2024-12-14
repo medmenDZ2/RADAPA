@@ -1,0 +1,52 @@
+name: RDP Setup (for 2 hours)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  rdp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up RDP
+        run: |
+          # Update package lists and install dependencies
+          sudo apt update
+          sudo apt install -y xrdp xfce4 xfce4-goodies
+
+          # Create a user for RDP access
+          sudo adduser github --disabled-password
+          sudo adduser github sudo
+          echo 'github:password123' | sudo chpasswd
+
+          # Configure xrdp and xfce4
+          echo 'xfce4-session' > ~/.xsession
+
+          # Start the xrdp service
+          sudo service xrdp start
+          sudo systemctl enable xrdp
+
+          # Ensure xrdp is running
+          sudo systemctl status xrdp | tee xrdp_status.txt
+          
+      - name: Get Public IP Address
+        run: |
+          IP=$(curl -s ifconfig.me)
+          echo "Public IP Address is: $IP"
+          echo "::set-output name=ip::${IP}"
+
+      - name: Display Connection Info
+        run: |
+          echo "You can connect to the RDP using the following details:"
+          echo "IP Address: ${{ steps.Get Public IP Address.outputs.ip }}"
+          echo "Username: github"
+          echo "Password: password123"
+
+      - name: Sleep for 2 Hours (to keep the session alive)
+        run: |
+          echo "Waiting for 2 hours..."
+          sleep 7200 # 2 hours in seconds
+          
+      - name: Clean Up (Shutdown the RDP)
+        run: |
+          echo "Shutting down the RDP instance after 2 hours."
+          sudo systemctl stop xrdp
